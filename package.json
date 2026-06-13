@@ -1,0 +1,39 @@
+{
+  "name": "crowded-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down -v",
+    "db:init": "docker compose exec -T mongodb sh -c 'mongosh -u \"$MONGO_INITDB_ROOT_USERNAME\" -p \"$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin \"$MONGO_INITDB_DATABASE\" /scripts/init-mongo.js'",
+    "eslint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "eslint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "prepare": "husky",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.12.0",
+    "@typescript-eslint/parser": "^7.12.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.5"
+  },
+  "lint-staged": {
+    "*.ts": "eslint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Miffael/crowded-test.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Miffael/crowded-test/issues"
+  },
+  "homepage": "https://github.com/Miffael/crowded-test#readme"
+}
