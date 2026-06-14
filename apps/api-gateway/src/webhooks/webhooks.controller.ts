@@ -2,7 +2,7 @@
 import { Controller, Post, Headers, Req, BadRequestException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBody } from '@nestjs/swagger';
 import * as crypto from 'crypto';
 import { Request } from 'express';
 
@@ -12,6 +12,15 @@ export class WebhooksController {
   constructor(@InjectQueue('webhooks') private readonly webhooksQueue: Queue) {}
 
   @Post('provider-a')
+  @ApiBody({
+    schema: {
+      example: {
+        id: 'evt_1',
+        type: 'payment.sent',
+        data: { payment_id: 'pay_123' },
+      },
+    },
+  })
   async handleProviderA(
     @Headers('X-Signature') signatureHeader: string,
     @Req() req: Request & { rawBody?: Buffer },
@@ -79,6 +88,15 @@ export class WebhooksController {
   }
 
   @Post('provider-b')
+  @ApiBody({
+    schema: {
+      example: {
+        event_id: 'evt_2',
+        event_type: 'transfer.sent',
+        object: { transfer_id: 'pay_456' },
+      },
+    },
+  })
   async handleProviderB(
     @Headers('X-TP-Signature') signatureHeader: string,
     @Req() req: Request & { rawBody?: Buffer },

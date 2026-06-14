@@ -11,6 +11,10 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { PaymentsService } from './payments.service';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { Role } from '@shared/types/role.types';
 
 @ApiTags('payments')
 @Controller()
@@ -18,7 +22,8 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.OPERATOR)
   @Post('payments')
   @ApiOperation({ summary: 'Originate outgoing ACH credit' })
   @ApiHeader({ name: 'Idempotency-Key', required: true })
@@ -30,8 +35,7 @@ export class PaymentsController {
   async createPayment(
     @Headers('Idempotency-Key') idempotencyKey: string,
     @Headers('X-Mock-Outcome') mockOutcome: string,
-    @Body()
-    body: { accountId: string; amount: number; currency: string; direction: 'credit' | 'debit' },
+    @Body() body: CreatePaymentDto,
   ) {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required');
@@ -47,7 +51,8 @@ export class PaymentsController {
   }
 
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.OPERATOR)
   @Get('payments/:paymentId')
   @ApiOperation({ summary: 'Get one payment with current state' })
   async getPayment(@Param('paymentId') paymentId: string) {

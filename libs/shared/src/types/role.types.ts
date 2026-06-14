@@ -3,4 +3,7 @@
  * - admin: Can create and block customers/users, and manage accounts and payments.
  * - operator: Has access only to accounts and payments.
  */
-export type Role = 'admin' | 'operator';
+export enum Role {
+  ADMIN = 'admin',
+  OPERATOR = 'operator',
+}
