@@ -10,4 +10,5 @@ export interface Account {
   status: AccountStatus;
   createdAt: Date;
   updatedAt: Date;
+  createdByUserId: string;
 }

@@ -19,4 +19,5 @@ export interface Payment {
   providerPaymentId?: string; // external vendor reference (payment_id / transfer_id)
   createdAt: Date;
   updatedAt: Date;
+  createdByUserId: string;
 }

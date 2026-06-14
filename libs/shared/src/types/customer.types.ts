@@ -7,4 +7,5 @@ export interface Customer {
   deactivatedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  createdByUserId: string;
 }
