@@ -14,3 +14,10 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Build output
+dist/
+
+# Tests
+coverage/
+
