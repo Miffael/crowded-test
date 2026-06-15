@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class WebhookEvent extends Document {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   eventId!: string; // Provider's unique event ID to prevent replay
 
   @Prop({ required: true })

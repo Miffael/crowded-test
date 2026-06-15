@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { DispatchWorker } from './dispatch.worker';
 import { MongooseModule } from '@nestjs/mongoose';
+import { BullModule } from '@nestjs/bullmq';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { ProviderFactory } from './providers/provider.factory';
@@ -11,10 +13,13 @@ import { Payment, PaymentSchema } from '../schemas/payment.schema';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Payment.name, schema: PaymentSchema }]),
-    AccountsModule, // For account validation
+    AccountsModule,
+    BullModule.registerQueue({
+      name: 'dispatch-retries',
+    }),
   ],
   controllers: [PaymentsController],
-  providers: [PaymentsService, ProviderFactory, ProviderAAdapter, ProviderBAdapter],
+  providers: [PaymentsService, ProviderFactory, DispatchWorker, ProviderAAdapter, ProviderBAdapter],
   exports: [PaymentsService],
 })
 export class PaymentsModule {}

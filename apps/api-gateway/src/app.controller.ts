@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Inject, HttpException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LoginDto } from './auth/login.dto';
 import { firstValueFrom } from 'rxjs';
 

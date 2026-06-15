@@ -5,7 +5,7 @@ import { Payment } from '../../schemas/payment.schema';
 @Injectable()
 export class ProviderBAdapter implements ProviderAdapter {
   async originatePayment(
-    payment: Payment,
+    _payment: Payment,
   ): Promise<{ status: 'draft' | 'pending' | 'rejected'; providerPaymentId?: string }> {
     // Mock Provider B call
     // Provider B returns `pending` or `rejected` on successful dispatch.

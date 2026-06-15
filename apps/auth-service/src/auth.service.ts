@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from './user.entity';
@@ -19,7 +19,7 @@ export class AuthService {
     if (user && user.status !== 'blocked' && user.status !== 'deleted') {
       const isMatch = await bcrypt.compare(pass, user.passwordHash);
       if (isMatch) {
-        const { passwordHash, ...result } = user;
+        const { passwordHash: _passwordHash, ...result } = user;
         return result;
       }
     }

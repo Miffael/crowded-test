@@ -4,6 +4,7 @@ import { PaymentsService } from '../src/payments/payments.service';
 import { AccountsService } from '../src/accounts/accounts.service';
 import { ProviderFactory } from '../src/payments/providers/provider.factory';
 import { getModelToken } from '@nestjs/mongoose';
+import { getQueueToken } from '@nestjs/bullmq';
 import { Payment } from '../src/schemas/payment.schema';
 import { InternalServerErrorException, BadRequestException } from '@nestjs/common';
 
@@ -27,6 +28,10 @@ describe('PaymentsService', () => {
     getAdapter: jest.fn().mockReturnValue(mockProviderAdapter),
   };
 
+  const mockQueue = {
+    add: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -34,6 +39,7 @@ describe('PaymentsService', () => {
         { provide: getModelToken(Payment.name), useValue: mockPaymentModel },
         { provide: AccountsService, useValue: mockAccountsService },
         { provide: ProviderFactory, useValue: mockProviderFactory },
+        { provide: getQueueToken('dispatch-retries'), useValue: mockQueue },
       ],
     }).compile();
 
@@ -50,14 +56,23 @@ describe('PaymentsService', () => {
 
     it('should return existing payment if Idempotency Key is found', async () => {
       mockAccountsService.getAccount.mockResolvedValue({ status: 'active', provider: 'ProviderA' });
-      const existing = { paymentId: 'idem_1', status: 'draft' };
+      const existing = {
+        paymentId: 'idem_1',
+        status: 'draft',
+        save: jest.fn().mockResolvedValue(true),
+      };
       mockPaymentModel.findOne.mockResolvedValue(existing);
+      mockProviderAdapter.originatePayment.mockResolvedValue({
+        status: 'draft',
+        providerPaymentId: 'pay_a_123',
+      });
 
       const result = await service.originatePayment('acc_1', 100, 'USD', 'credit', 'idem_1');
-      expect(result).toEqual(existing);
+      expect(result.status).toEqual('draft');
+      expect(existing.save).toHaveBeenCalled();
     });
 
-    it('should throw InternalServerErrorException and leave payment in draft on dispatch failure', async () => {
+    it('should throw InternalServerErrorException and leave payment in draft on dispatch failure, then enqueue', async () => {
       mockAccountsService.getAccount.mockResolvedValue({ status: 'active', provider: 'ProviderA' });
       mockPaymentModel.findOne.mockResolvedValue(null);
 
@@ -76,6 +91,12 @@ describe('PaymentsService', () => {
       await expect(
         service.originatePayment('acc_1', 100, 'USD', 'credit', 'idem_1', 'dispatch_failure'),
       ).rejects.toThrow(InternalServerErrorException);
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'dispatch',
+        expect.objectContaining({ paymentId: 'idem_1' }),
+        expect.objectContaining({ attempts: 4 }),
+      );
     });
   });
 });

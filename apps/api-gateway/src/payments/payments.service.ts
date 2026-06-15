@@ -10,6 +10,8 @@ import { Model } from 'mongoose';
 import { Payment } from '../schemas/payment.schema';
 import { AccountsService } from '../accounts/accounts.service';
 import { ProviderFactory } from './providers/provider.factory';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class PaymentsService {
@@ -17,6 +19,7 @@ export class PaymentsService {
     @InjectModel(Payment.name) private paymentModel: Model<Payment>,
     private readonly accountsService: AccountsService,
     private readonly providerFactory: ProviderFactory,
+    @InjectQueue('dispatch-retries') private readonly dispatchQueue: Queue,
   ) {}
 
   async originatePayment(
@@ -36,9 +39,43 @@ export class PaymentsService {
     // 2. Check Idempotency Key (Return existing if found)
     const existingPayment = await this.paymentModel.findOne({ paymentId: idempotencyKey });
     if (existingPayment) {
-      // If dispatch failed previously, it's still in draft. We should retry dispatch here.
-      // For simplicity in this assignment: we just return the existing payment.
-      // If it failed transport, returning draft is exactly what the spec expects.
+      if (existingPayment.status === 'draft') {
+        // If it failed transport previously, it's still in draft. We should retry dispatch here.
+        try {
+          const adapter = this.providerFactory.getAdapter(account.provider);
+
+          if (mockOutcome === 'dispatch_failure') {
+            throw new InternalServerErrorException('Transport failure');
+          }
+
+          let outcome;
+          if (mockOutcome === 'rejected' && account.provider === 'ProviderB') {
+            outcome = {
+              status: 'rejected',
+              providerPaymentId: `trf_b_rej_${Math.random().toString(36).substr(2, 9)}`,
+            };
+          } else {
+            outcome = await adapter.originatePayment(existingPayment);
+          }
+
+          existingPayment.status = outcome.status as any;
+          existingPayment.providerPaymentId = outcome.providerPaymentId as string;
+          await existingPayment.save();
+          return existingPayment;
+        } catch (error) {
+          await this.dispatchQueue.add(
+            'dispatch',
+            { paymentId: existingPayment.paymentId },
+            {
+              attempts: 4,
+              backoff: { type: 'exponential', delay: 2000 },
+            },
+          );
+          throw new InternalServerErrorException(
+            'Dispatch to provider failed again on retry. Payment recorded in draft and queued for retry.',
+          );
+        }
+      }
       return existingPayment;
     }
 
@@ -79,9 +116,18 @@ export class PaymentsService {
 
       return newPayment;
     } catch (error) {
-      // Transport failure: keep as draft, bubble error
+      // Transport failure: keep as draft, bubble error, but enqueue for retry
+      await this.dispatchQueue.add(
+        'dispatch',
+        { paymentId: newPayment.paymentId },
+        {
+          attempts: 4, // 1 inline + 4 retries = 5 attempts
+          backoff: { type: 'exponential', delay: 2000 },
+        },
+      );
+
       throw new InternalServerErrorException(
-        'Dispatch to provider failed. Payment recorded in draft.',
+        'Dispatch to provider failed. Payment recorded in draft and queued for retry.',
       );
     }
   }

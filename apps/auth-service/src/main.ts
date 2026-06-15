@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 
@@ -11,6 +12,6 @@ async function bootstrap() {
     },
   });
   await app.listen();
-  console.log('Auth Microservice is listening on TCP 3001');
+  Logger.log('Auth Microservice is listening on TCP 3001');
 }
 bootstrap();

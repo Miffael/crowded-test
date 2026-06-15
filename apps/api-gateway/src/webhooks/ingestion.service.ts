@@ -37,24 +37,18 @@ export class IngestionService {
     }
 
     // 3. State machine validation (handling out-of-order arrivals)
-    const statePriority: Record<string, number> = {
-      draft: 0,
-      pending: 1,
-      clearing: 2,
-      sent: 3,
-      returned: 4,
-      rejected: 4,
+    const validTransitions: Record<string, string[]> = {
+      draft: ['pending', 'clearing', 'sent', 'rejected', 'returned'],
+      pending: ['clearing', 'sent', 'rejected', 'returned'],
+      clearing: ['sent', 'rejected', 'returned'],
+      sent: ['returned'],
+      returned: [],
+      rejected: [],
     };
 
-    const currentPriority = statePriority[payment.status] ?? -1;
-    const incomingPriority = statePriority[status] ?? -1;
-
-    // If the incoming status is "older" than what we already know, ignore it.
-    // Example: 'pending' arrives after 'sent'
-    if (incomingPriority <= currentPriority && incomingPriority !== 4) {
-      // returned/rejected are terminal
+    if (!validTransitions[payment.status]?.includes(status)) {
       this.logger.warn(
-        `Ignoring out-of-order or duplicate state transition for payment ${paymentId}: ${payment.status} -> ${status}`,
+        `Ignoring invalid or out-of-order state transition for payment ${paymentId}: ${payment.status} -> ${status}`,
       );
       return;
     }

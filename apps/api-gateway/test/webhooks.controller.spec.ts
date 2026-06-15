@@ -22,7 +22,7 @@ describe('WebhooksController', () => {
 
   it('should enqueue event to BullMQ', async () => {
     const mockReq = { rawBody: Buffer.from('test') } as unknown as RawBodyRequest<Request>;
-    const body = { event_id: 'evt_1', payment_id: 'pay_1', status: 'sent' };
+    const _body = { event_id: 'evt_1', payment_id: 'pay_1', status: 'sent' };
 
     // We bypass signature check by mocking headers directly
     // Wait, the controller throws Unauthorized if signature is invalid.
