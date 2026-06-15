@@ -64,34 +64,49 @@ export class AccountsService {
   }
 
   private async calculateBalance(matchCondition: any) {
-    const payments = await this.paymentModel.find(matchCondition);
-    let posted = 0;
-    let available = 0;
-    let currency = 'USD'; // Assuming single currency for simplicity or taking from first payment
+    const [result] = await this.paymentModel.aggregate([
+      { $match: matchCondition },
+      {
+        $group: {
+          _id: null,
+          posted: {
+            $sum: {
+              $cond: [
+                { $eq: ['$status', 'sent'] },
+                {
+                  $cond: [
+                    { $eq: ['$direction', 'credit'] },
+                    '$amount',
+                    { $multiply: ['$amount', -1] },
+                  ],
+                },
+                0,
+              ],
+            },
+          },
+          pendingDebits: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $in: ['$status', ['draft', 'pending', 'clearing']] },
+                    { $eq: ['$direction', 'debit'] },
+                  ],
+                },
+                { $multiply: ['$amount', -1] },
+                0,
+              ],
+            },
+          },
+          currency: { $first: '$currency' },
+        },
+      },
+    ]);
 
-    for (const payment of payments) {
-      currency = payment.currency; // Update currency
-
-      const isCredit = payment.direction === 'credit';
-      const amount = isCredit ? payment.amount : -payment.amount;
-
-      if (payment.status === 'sent') {
-        posted += amount;
-        available += amount;
-      } else if (payment.status === 'returned') {
-        // Returned is a reversal of 'sent'.
-        // If it was an incoming credit, we lose the money. If outgoing debit, we get it back.
-        // Wait, 'posted' is net of any 'returned'. So we don't add returned to posted.
-        // Actually, if it's returned, it shouldn't be in posted anymore. Or rather,
-        // sent adds it, returned subtracts it.
-        // If it never reached 'sent', it shouldn't have affected posted anyway.
-      } else if (['draft', 'pending', 'clearing'].includes(payment.status)) {
-        // In-flight outgoing debits reduce available balance
-        if (!isCredit) {
-          available += amount; // amount is negative, so this subtracts
-        }
-      }
-    }
+    const posted = result?.posted || 0;
+    const pendingDebits = result?.pendingDebits || 0;
+    const available = posted + pendingDebits;
+    const currency = result?.currency || 'USD';
 
     return { posted, available, currency };
   }
