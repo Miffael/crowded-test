@@ -25,6 +25,21 @@ services:
     volumes:
       - redis_data:/data
 
+  postgres_auth:
+    image: postgres:15-alpine
+    container_name: postgres_baas_auth
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql:ro
+
 volumes:
   mongodb_data:
   redis_data:
+  postgres_data:
